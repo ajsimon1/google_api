@@ -187,7 +187,7 @@ def download_files_from_drive(service, fname, file_id=''):
     # grab the content of the file_id provided, return as plain text
     # NOTE: other mime type can be provided
     content = service.files()                                                  \
-                     .export(fileId=file_id, mimeType='plain/text')            \
+                     .export(fileId=file_id, mimeType='text/csv')            \
                      .execute()
     # save file in local directory using filename passed
     # TODO add path to fname for output dir, include this as a param of func

@@ -3,17 +3,19 @@ The cli module interacts with the user via the comman line module through
 the argparse
 '''
 import argparse
-import google_api_core as gac
+import os
+
+from . import google_api_core as gac
 
 parser = argparse.ArgumentParser(description='CLI wrapper for google services' \
                                              ' api')
 parser.add_argument('service', help='specify the google service to connect to,'\
                                     ' [drive, gmail]')
-parse.add_argument('authenticate', help='Function authenticates user with '    \
+parser.add_argument('authenticate', help='Function authenticates user with '    \
                                         'google account.  This may require '   \
                                         'authorization')
-parse.add_argument('-q --query', type=str, help='Pass query to service')
-parse.add_argument('-n --mame', type=str, help='Pass name of resource to '     \
+parser.add_argument('-q --query', type=str, help='Pass query to service')
+parser.add_argument('-n --mame', type=str, help='Pass name of resource to '     \
                                                'service')
 
 # TODO figure out best options/arguments
@@ -49,12 +51,13 @@ up_to_date_service_versions = {
 
 def run(args):
     serv_vers = up_to_date_service_versions[args.service]
-    gac.authenticate(scopes=SCOPES,
-                     basedir=basedir,
-                     tokens_f=drive_tokens_f,
-                     credentials_f=drive_credentials_f
-                     service = args.service,
-                     serv_vers=serv_vers)
+    service = gac.authenticate(scopes=SCOPES,
+                               basedir=basedir,
+                               tokens_f=drive_tokens_f,
+                               credentials_f=drive_credentials_f,
+                               service = args.service,
+                               serv_vers=serv_vers)
+    gac.download_files_from_drive(service, fname)
     return None
 
 if __name__ == '__main__':
