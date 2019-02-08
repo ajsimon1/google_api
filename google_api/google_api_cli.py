@@ -50,6 +50,7 @@ up_to_date_service_versions = {
 }
 
 def run(args):
+    # this procedure works in ipython, just need to fit it command line
     serv_vers = up_to_date_service_versions[args.service]
     service = gac.authenticate(scopes=SCOPES,
                                basedir=basedir,
@@ -62,5 +63,4 @@ def run(args):
 
 if __name__ == '__main__':
     args = parser.parse_args()
-
     run(args)

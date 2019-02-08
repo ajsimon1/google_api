@@ -191,10 +191,11 @@ def download_files_from_drive(service, fname, file_id=''):
                      .execute()
     # save file in local directory using filename passed
     # TODO add path to fname for output dir, include this as a param of func
-    with open(fname, 'wb') as f:
+    save_fname = fname+'.csv'
+    with open(save_fname, 'wb') as f:
         f.write(content)
         f.close()
-    return '{} downloaded from drive'.format(fname)
+    return '{} downloaded from drive'.format(save_fname)
 
 
 if __name__ == '__main__':
