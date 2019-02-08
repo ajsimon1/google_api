@@ -11,26 +11,7 @@ from googleapiclient.discovery import build
 from httplib2 import Http
 from oauth2client import file, client, tools
 
-# scope necessary is for gmail readonly, a list of scopes can be found at
-# https://developers.google.com/gmail/api/auth/scopes
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly',
-          'https://www.googleapis.com/auth/gmail.modify',
-          'https://www.googleapis.com/auth/drive.metadata.readonly',
-          'https://www.googleapis.com/auth/drive.readonly']
-# validate attachments against 'accepted' list to only pull down certain files
-# TODO files with alternate extensions should not be discarded but dumped into
-# separate bucket
-EXTENSIONS = ['txt', 'csv', 'xlsx', 'xls']
-# grab base directory of script for relative file transfers
-basedir = os.path.abspath(os.path.dirname(__file__))
-# dump directory for attachments
-attachdir = basedir+'//attachments//'
-tradedata_tokens_f = 'td_tokens.json'
-tradedata_credentials_f = 'client_id.json'
-simon_tokens_f = 'as_tokens.json'
-simon_credntials_f = 'credentials.json'
-drive_credentials_f = 'drive_credentials.json'
-drive_tokens_f = 'drive_tokens.json'
+
 
 # function to validate credntial or tokens file and return build object
 # note that gmail and v1 are hard coded in the build() method, should other
@@ -187,8 +168,9 @@ def download_files_from_drive(service, fname, file_id=''):
     if not file_id:
         # pull last 10 files chronologically, only provide id and name in
         # result set
+        # TODO add option to limit # of files with pageSize arg
         results = service.files()                                              \
-                         .list(pageSize=10, fields='nextPageToken, files(id, name)')
+                         .list(fields='nextPageToken, files(id, name)')        \
                          .execute()
         # pull file content from metadata
         files = results.get('files', [])
@@ -197,7 +179,7 @@ def download_files_from_drive(service, fname, file_id=''):
         if not files:
             print('No files found.')
         else:
-            for item in items:
+            for item in files:
                 if item['name'].lower() == fname.lower():
                     file_id = item['id']
                 else:

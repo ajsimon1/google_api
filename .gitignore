@@ -1,6 +1,6 @@
-json
-png
-jpeg
-csv
-xls
-xlsx
+*.json
+*.png
+*.jpeg
+*.csv
+*.xls
+*.xlsx
