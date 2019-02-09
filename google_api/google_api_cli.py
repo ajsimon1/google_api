@@ -50,16 +50,15 @@ up_to_date_service_versions = {
 
 def run(args):
     # this procedure works in ipython, just need to fit it command line
-    print(args)
-    print(args.service)
-    serv_vers = up_to_date_service_versions[args.service]
-    service = gac.authenticate(scopes=SCOPES,
-                               basedir=basedir,
-                               tokens_f=drive_tokens_f,
-                               credentials_f=drive_credentials_f,
-                               service = args.service,
-                               serv_vers=serv_vers)
-    gac.download_files_from_drive(service, args.name, out_dir=args.out)
+    if args.service == 'drive':
+        serv_vers = up_to_date_service_versions[args.service]
+        service = gac.authenticate(scopes=SCOPES,
+                                   basedir=basedir,
+                                   tokens_f=drive_tokens_f,
+                                   credentials_f=drive_credentials_f,
+                                   service = args.service,
+                                   serv_vers=serv_vers)
+        gac.download_files_from_drive(service, args.name, out_dir=args.out)
     return None
 
 if __name__ == '__main__':
