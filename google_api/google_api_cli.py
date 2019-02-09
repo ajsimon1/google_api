@@ -5,18 +5,17 @@ the argparse
 import argparse
 import os
 
-from . import google_api_core as gac
+import google_api_core as gac
 
 parser = argparse.ArgumentParser(description='CLI wrapper for google services' \
                                              ' api')
 parser.add_argument('service', help='specify the google service to connect to,'\
                                     ' [drive, gmail]')
-parser.add_argument('authenticate', help='Function authenticates user with '    \
-                                        'google account.  This may require '   \
-                                        'authorization')
-parser.add_argument('-q --query', type=str, help='Pass query to service')
-parser.add_argument('-n --mame', type=str, help='Pass name of resource to '     \
-                                               'service')
+#parser.add_argument('authenticate', help='Function authenticates user with google account.  This may require authorization')
+parser.add_argument('-q', '--query', type=str, help='Pass query to service')
+parser.add_argument('-n', '--name', type=str, help='Pass name of resource to ' \
+                                                'service')
+parser.add_argument('-o', '--out', help='Path of desired output directory')
 
 # TODO figure out best options/arguments
 # having a positional arg for which google service is being called might be
@@ -26,7 +25,7 @@ parser.add_argument('-n --mame', type=str, help='Pass name of resource to '     
 
 # grab base directory of script for relative file transfers
 # can use os.getcwd() if __file__ not available
-basedir = os.path.abspath(os.path.dirname(__file__))
+basedir = os.path.abspath(os.path.join(__file__,'../..'))
 # dump directory for attachments
 attachdir = basedir+'..//attachments//'
 drive_credentials_f = 'drive_credentials.json'
@@ -51,6 +50,8 @@ up_to_date_service_versions = {
 
 def run(args):
     # this procedure works in ipython, just need to fit it command line
+    print(args)
+    print(args.service)
     serv_vers = up_to_date_service_versions[args.service]
     service = gac.authenticate(scopes=SCOPES,
                                basedir=basedir,
@@ -58,7 +59,7 @@ def run(args):
                                credentials_f=drive_credentials_f,
                                service = args.service,
                                serv_vers=serv_vers)
-    gac.download_files_from_drive(service, fname)
+    gac.download_files_from_drive(service, args.name, out_dir=args.out)
     return None
 
 if __name__ == '__main__':

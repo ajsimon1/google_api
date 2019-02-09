@@ -163,7 +163,7 @@ def batch_modify_message_label(attach_ids_list, label='Processing'):
     except IndexError:
         print('{} label not found in user\'s inbox'.format(label))
 
-def download_files_from_drive(service, fname, file_id=''):
+def download_files_from_drive(service, fname, file_id='', out_dir=''):
     # check if file_id was passed to func; if not, retrieve file by filename
     if not file_id:
         # pull last 10 files chronologically, only provide id and name in
@@ -192,6 +192,8 @@ def download_files_from_drive(service, fname, file_id=''):
     # save file in local directory using filename passed
     # TODO add path to fname for output dir, include this as a param of func
     save_fname = fname+'.csv'
+    if out_dir:
+        save_fname = os.path.join(out_dir, save_fname)
     with open(save_fname, 'wb') as f:
         f.write(content)
         f.close()
