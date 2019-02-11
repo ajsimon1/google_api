@@ -43,6 +43,7 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.readonly',
 # separate bucket
 EXTENSIONS = ['txt', 'csv', 'xlsx', 'xls']
 
+# set dict to manage current versions of each service
 up_to_date_service_versions = {
     'drive': 'v3',
     'gmail': 'v1'
@@ -54,7 +55,6 @@ def run(args):
         serv_vers = up_to_date_service_versions[args.service]
         service = gac.authenticate(scopes=SCOPES,
                                    basedir=basedir,
-                                   tokens_f=drive_tokens_f,
                                    credentials_f=drive_credentials_f,
                                    service = args.service,
                                    serv_vers=serv_vers)

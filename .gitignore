@@ -4,5 +4,6 @@
 *.csv
 *.xls
 *.xlsx
-*.pyc
-*\__pycache__\
+*.py[cod]
+__pycache__\
+*.pickle

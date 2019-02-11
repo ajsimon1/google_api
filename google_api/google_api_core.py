@@ -5,65 +5,42 @@ with the cli module for proper functionality
 import base64
 import datetime as dt
 import os
+import pickle
 import sys
 
 from googleapiclient.discovery import build
-from httplib2 import Http
-from oauth2client import file, client, tools
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
 
 
-
-# function to validate credntial or tokens file and return build object
-# note that gmail and v1 are hard coded in the build() method, should other
-# google apis be needed, these values will need to parameterized
-# added 'service' arg to genericize function and allow for multiple
-# apis to use the same auth func
-def authenticate(scopes, basedir, tokens_f, credentials_f, service, serv_vers):
-    # start by creating a Storage() object to manage authorization
-    # this is pulled from oauth2client lib file module.  the tokens.json
-    # filename is passed as this is used for reoccuring authorized access to
-    # the api.  if the tokens.json file is not available, the .get() method
-    # will return none and the if statement will trigger the flow logic
-    # to run.  This will in turn create a tokens.json file based on
-    # downloaded credentials.json file
-    store = file.Storage(os.path.join(basedir,tokens_f))
-    # get() method on Storage object retrieves credentials from tokens.json
-    # file, if that file does not exist var calling get() method will be empty
-    creds = store.get()
-    # logic statement checks to see if creds var was able to pull data from
-    # tokens.json file.  If not, or if creds pulled are invalid, the
-    # flow statement runs which creates a tokens.json file
-    if not creds or creds.invalid:
-        # since no tokens.json file is available or the data pulled from the
-        # file is not valid, a flow object is created from client modules,
-        # passing in credentials.json file and scopes.  credntials.json file
-        # is downloaded from google API console and should be saved within
-        # same namespace as script.  Also should be shared globally
-        flow = client.flow_from_clientsecrets(os.path.join(basedir,
-                                                          credentials_f),
-                                                           scopes)
-        # run_flow() method from tools module generates tokens.json file within
-        # namespace and saved approriate data to creds var
-        # note: when run for the first time, run_flow() will open a browser
-        # tab to have user authorize application.  this is only done for initial
-        # attempt to access gmail api, or is tokens.json data becomes invalid
-        # the credentials.json file can be modified to update where the user
-        # redirected if this authorization fails
-        creds = tools.run_flow(flow, store)
-    # build() func creates the interface between the client and api, utilizing
-    # multiple class methods to pull specific resources from the provided api
-    # list of supported apis at:
-    # https://developers.google.com/api-client-library/python/apis/
-    service = build(str(service), str(serv_vers), http=creds.authorize(Http()))
-    # once service ojb created, chain methods together to pull down desired
-    # resource.  various resources/collections available at:
-    # https://developers.google.com/gmail/api/v1/reference/
-    # note that different collections will have different required parameters
-    # to pass.  of note is the 'q' parameter on messages().get(q='') which
-    # allows to filter message list with same syntax used to search in gmail app
-    # note the use of 'me' arg as userId, this is syntatic sugar to reference
-    # current user, otherwise full email addr can be used
-    # execute() method must be called
+# function to authenticate app with previoulsy built token file or credentials
+# file downloaded for google api console
+# returns service object used to communicate with api
+def authenticate(scopes, basedir, credentials_f, service, serv_vers):
+    # set creds to None to allow unpickled tokens to populate empty var
+    creds = None
+    # check if token.pickle file exists in basedir var passed
+    # if yes, this file is used to authenticate service
+    if os.path.exists(os.path.join(basedir,'token.pickle')):
+        with open('token.pickle', 'rb') as token:
+            creds = pickle.load(token)
+    # if token.pcikle does not exist or if creds is invalid, then use passed
+    # credentials file to create new token.pickle or refresh old token file
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            # use provided credntials file with defined scopes to generate
+            # token file
+            flow = InstalledAppFlow.from_client_secrets_file(credentials_f,
+                                                             scopes)
+            creds = flow.run_local_server()
+            # create new token.pickle
+            with open('token.pickle', 'wb') as token:
+                pickle.dump(creds,token)
+    # create service object to return, based on google service and version
+    # provided
+    service = build(str(service), str(serv_vers), credentials=creds)
     return service
 
 def pull_mail_from_query(build_obj, search_query):
@@ -199,6 +176,58 @@ def download_files_from_drive(service, fname, file_id='', out_dir=''):
         f.close()
     return '{} downloaded from drive'.format(save_fname)
 
+# function to validate credntial or tokens file and return build object
+# note that gmail and v1 are hard coded in the build() method, should other
+# google apis be needed, these values will need to parameterized
+# added 'service' arg to genericize function and allow for multiple
+# apis to use the same auth func
+def authenticate_deprecated(scopes, basedir, tokens_f, credentials_f, service, serv_vers):
+    # start by creating a Storage() object to manage authorization
+    # this is pulled from oauth2client lib file module.  the tokens.json
+    # filename is passed as this is used for reoccuring authorized access to
+    # the api.  if the tokens.json file is not available, the .get() method
+    # will return none and the if statement will trigger the flow logic
+    # to run.  This will in turn create a tokens.json file based on
+    # downloaded credentials.json file
+    store = file.Storage(os.path.join(basedir,tokens_f))
+    # get() method on Storage object retrieves credentials from tokens.json
+    # file, if that file does not exist var calling get() method will be empty
+    creds = store.get()
+    # logic statement checks to see if creds var was able to pull data from
+    # tokens.json file.  If not, or if creds pulled are invalid, the
+    # flow statement runs which creates a tokens.json file
+    if not creds or creds.invalid:
+        # since no tokens.json file is available or the data pulled from the
+        # file is not valid, a flow object is created from client modules,
+        # passing in credentials.json file and scopes.  credntials.json file
+        # is downloaded from google API console and should be saved within
+        # same namespace as script.  Also should be shared globally
+        flow = client.flow_from_clientsecrets(os.path.join(basedir,
+                                                          credentials_f),
+                                                           scopes)
+        # run_flow() method from tools module generates tokens.json file within
+        # namespace and saved approriate data to creds var
+        # note: when run for the first time, run_flow() will open a browser
+        # tab to have user authorize application.  this is only done for initial
+        # attempt to access gmail api, or is tokens.json data becomes invalid
+        # the credentials.json file can be modified to update where the user
+        # redirected if this authorization fails
+        creds = tools.run_flow(flow, store)
+    # build() func creates the interface between the client and api, utilizing
+    # multiple class methods to pull specific resources from the provided api
+    # list of supported apis at:
+    # https://developers.google.com/api-client-library/python/apis/
+    service = build(str(service), str(serv_vers), http=creds.authorize(Http()))
+    # once service ojb created, chain methods together to pull down desired
+    # resource.  various resources/collections available at:
+    # https://developers.google.com/gmail/api/v1/reference/
+    # note that different collections will have different required parameters
+    # to pass.  of note is the 'q' parameter on messages().get(q='') which
+    # allows to filter message list with same syntax used to search in gmail app
+    # note the use of 'me' arg as userId, this is syntatic sugar to reference
+    # current user, otherwise full email addr can be used
+    # execute() method must be called
+    return service
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
