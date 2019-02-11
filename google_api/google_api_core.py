@@ -21,8 +21,9 @@ def authenticate(scopes, basedir, credentials_f, service, serv_vers):
     creds = None
     # check if token.pickle file exists in basedir var passed
     # if yes, this file is used to authenticate service
-    if os.path.exists(os.path.join(basedir,'token.pickle')):
-        with open('token.pickle', 'rb') as token:
+    full_token_path = os.path.join(basedir,'token.pickle')
+    if os.path.exists(full_token_path):
+        with open(full_token_path, 'rb') as token:
             creds = pickle.load(token)
     # if token.pcikle does not exist or if creds is invalid, then use passed
     # credentials file to create new token.pickle or refresh old token file
@@ -36,7 +37,7 @@ def authenticate(scopes, basedir, credentials_f, service, serv_vers):
                                                              scopes)
             creds = flow.run_local_server()
             # create new token.pickle
-            with open('token.pickle', 'wb') as token:
+            with open(full_token_path, 'wb') as token:
                 pickle.dump(creds,token)
     # create service object to return, based on google service and version
     # provided
