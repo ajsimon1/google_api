@@ -16,6 +16,14 @@ parser.add_argument('-q', '--query', type=str, help='Pass query to service')
 parser.add_argument('-n', '--name', type=str, help='Pass name of resource to ' \
                                                 'service')
 parser.add_argument('-o', '--out', help='Path of desired output directory')
+parser.add_argument('-c', '--credentials', help='specify credentials file to ')\
+                                            'use')
+parser.add_argument('-d',
+                    '--querydate',
+                    type=int,
+                    help='days from current date to include in query. e.g. '   \
+                    'if looking for all mail from yesterday, pass 1; if 2 days'\
+                    'back pass 2, etc.'
 
 # TODO figure out best options/arguments
 # having a positional arg for which google service is being called might be
@@ -28,7 +36,8 @@ parser.add_argument('-o', '--out', help='Path of desired output directory')
 basedir = os.path.abspath(os.path.join(__file__,'../..'))
 # dump directory for attachments
 attachdir = basedir+'..//attachments//'
-drive_credentials_f = 'drive_credentials.json'
+personal_credentials_f = 'drive_credentials.json'
+tradedata_credentials_f = 'client_secret_c2b_gmail.json'
 drive_tokens_f = 'drive_tokens.json'
 
 
@@ -41,7 +50,7 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.readonly',
 # validate attachments against 'accepted' list to only pull down certain files
 # TODO files with alternate extensions should not be discarded but dumped into
 # separate bucket
-EXTENSIONS = ['txt', 'csv', 'xlsx', 'xls']
+EXTENSIONS = ['txt', 'csv', 'xlsx', 'xls', '', 'dat', 'zip', 'rpg']
 
 # set dict to manage current versions of each service
 up_to_date_service_versions = {
@@ -50,15 +59,41 @@ up_to_date_service_versions = {
 }
 
 def run(args):
-    # this procedure works in ipython, just need to fit it command line
+    if args.credentials == 'tradedata':
+        credentials_f = tradedata_credentials_f
+    elif args.credentials == 'personal':
+        credentials_f = personal_credentials_f
+    serv_vers = up_to_date_service_versions[args.service]
+    service = gac.authenticate(scopes=SCOPES,
+                               basedir=basedir,
+                               credentials_f=credentials_f,
+                               service = args.service,
+                               serv_vers=serv_vers)
     if args.service == 'drive':
-        serv_vers = up_to_date_service_versions[args.service]
-        service = gac.authenticate(scopes=SCOPES,
-                                   basedir=basedir,
-                                   credentials_f=drive_credentials_f,
-                                   service = args.service,
-                                   serv_vers=serv_vers)
         gac.download_files_from_drive(service, args.name, out_dir=args.out)
+    elif args.service == 'gmail':
+        if args.querydate:
+            query_date = args.querydate
+        else:
+            query_date = 1
+        start_date = dt.datetime.now() - dt.timedelta(days=query_date)
+        search_query = args.query + ' after {}'.format(start_date.strftime('%Y/%m/%d'))
+        results = gac.pull_mail_from_query(service, search_query)
+        # details_tup contains, attach id, mess id, from addr, filename in that
+        # order
+        details_tup = pull_attachs_from_query_results(build_obj=service,
+                                                     results=results)
+        # attach_dict contains filename as key and base64 encoded data as value
+        attach_dict = download_attachs(build_obj=service,
+                                       attach_ids_list=attach_ids_list,
+                                       attachdir = attachdir)
+        batch_modify_message_label(build_obj=service,
+                                   attach_ids_list=attach_ids_list,
+                                   label='Processed')
+
+        # TODO add filename to attach_ids tuple
+
+
     return None
 
 if __name__ == '__main__':

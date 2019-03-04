@@ -12,6 +12,7 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
+EXTENSIONS = ['txt', 'csv', 'xlsx', 'xls', '', 'dat', 'zip', 'rpg']
 
 # function to authenticate app with previoulsy built token file or credentials
 # file downloaded for google api console
@@ -21,7 +22,13 @@ def authenticate(scopes, basedir, credentials_f, service, serv_vers):
     creds = None
     # check if token.pickle file exists in basedir var passed
     # if yes, this file is used to authenticate service
-    full_token_path = os.path.join(basedir,'token.pickle')
+    if service == 'gmail':
+        pickle_f = 'td_gmail_token.pickle'
+    elif service == 'drive':
+        pickle_f = 'pers_drive_token.pickle'
+
+    full_token_path = os.path.join(basedir,pickle_f)
+    full_creds_path = os.path.join(basedir,credentials_f)
     if os.path.exists(full_token_path):
         with open(full_token_path, 'rb') as token:
             creds = pickle.load(token)
@@ -33,7 +40,7 @@ def authenticate(scopes, basedir, credentials_f, service, serv_vers):
         else:
             # use provided credntials file with defined scopes to generate
             # token file
-            flow = InstalledAppFlow.from_client_secrets_file(credentials_f,
+            flow = InstalledAppFlow.from_client_secrets_file(full_creds_path,
                                                              scopes)
             creds = flow.run_local_server()
             # create new token.pickle
@@ -56,7 +63,7 @@ def pull_mail_from_query(build_obj, search_query):
         return results
 
 
-def pull_attachs_from_query_results(results):
+def pull_attachs_from_query_results(build_obj, results):
     messages = results['messages']
     # list var to to append message info tuples of
     # (attachmentId, messageId, filename). the script will iterate through this
@@ -65,44 +72,69 @@ def pull_attachs_from_query_results(results):
     # iterate through nested message list, wrapping in try block in case
     # message resource missing 'payload' or 'parts' key
     # TODO make try bloack/error messsaging more robust
-    try:
         # iterate through messages list
-        for message in messages:
-            # call messages.get() to retrieve details on each message
-            # including filename and attachmentId which is necessary to
-            # pull actual attachment
-            mess = service.users().messages().get(userId='me',
-                                                 id=message['id']).execute()
-            # variabilize messageId and message headers
-            # while in the message object, headers include to, from, subject
-            # information, both are added to info tuple for later processing
-            m_id = mess['id']
-            # NOT CORRECT m_headers = mess['payload']['headers']
-            # iterate through parts in payload dict, if the file extension
-            # for the filename in the message resource is in the accepted
-            # list, append approriate info
+    for message in messages:
+        # call messages.get() to retrieve details on each message
+        # including filename and attachmentId which is necessary to
+        # pull actual attachment
+        mess = build_obj.users().messages().get(userId='me',
+                                             id=message['id']).execute()
+        # variabilize messageId and message headers
+        # while in the message object, headers include to, from, subject
+        # information, both are added to info tuple for later processing
+        m_id = mess['id']
+        # grab from email addr from message
+        from_addr = grab_from_addr(m_id, build_obj)
+        # NOT CORRECT m_headers = mess['payload']['headers']
+        # iterate through parts in payload dict, if the file extension
+        # for the filename in the message resource is in the accepted
+        # list, append approriate info
+        try:
             for part in mess['payload']['parts']:
-                if part['filename'].split('.')[-1] in EXTENSIONS:
-                    attach_ids.append((part['body']['attachmentId'],
-                                        m_id,
-                                        part['filename'],))
+                if part['filename']:
+                    if part['filename'].split('.')[-1].lower() in EXTENSIONS:
+                        attach_ids.append((part['body']['attachmentId'],
+                                            m_id,
+                                            from_addr,
+                                            part['filename'],))
+                    else:
+                        print('File extension for message id {}, not accetpable '\
+                            'extension'.format(m_id))
+                        continue
+                else:
+                    continue
+        except KeyError:
+            try:
+                if mess['payload']['filename']:
+                    if mess['payload']['filename'].split('.')[-1].lower() in EXTENSIONS:
+                        attach_ids.append((mess['payload']['body']['attachmentId'],
+                                            m_id,
+                                            from_addr,
+                                            mess['payload']['filename'],))
+                    else:
+                        print('File extension for message id {}, not accetpable '\
+                            'extension'.format(m_id))
+                        continue
+                else:
+                    continue
+            except KeyError:
+                print('Message {} has no payload'.format(m_id))
+
     # keyError exception accounts for any of the above keys being missing
     # while still allowing other errors to raise exception
-    except KeyError:
-        print('Passing on message id {}, no payload'.format(m_id))
     return attach_ids
 
-def download_attachs(attach_ids_list, attachdir):
+def download_attachs(build_obj, attach_ids_list, attachdir):
     # dict that will hold the actual attachments with attachmentId as the key
     attachments = {}
     # iterate the info tuples, extract the attachmentId, call attchments.get()
     # method to pull down the actual attachment, and add to dict, using the
     # filename as the key and the attachment data as the value
     for a_id in attach_ids_list:
-            attachments[a_id[2]] = service.users()                             \
-                                          .messages()                          \
-                                          .attachments()                       \
-                                          .get(userId='me',
+            attachments[a_id[3]] = build_obj.users()                           \
+                                            .messages()                        \
+                                            .attachments()                     \
+                                            .get(userId='me',
                                                id=a_id[0],
                                                messageId=a_id[1]).execute()
     # iterate through the attachs dict, pulling fielname and file data with
@@ -116,11 +148,11 @@ def download_attachs(attach_ids_list, attachdir):
             # write file_data and save
             f.write(file_data)
             f.close()
-    return attachments, a_id
+    return attachments
 
-def batch_modify_message_label(attach_ids_list, label='Processing'):
+def batch_modify_message_label(build_obj, attach_ids_list, label='Processing'):
     # pull down all available labels
-    response = service.users().labels().list(userId='me').execute()
+    response = build_obj.users().labels().list(userId='me').execute()
     # extract only labels list from entire response object
     labels = response['labels']
     # extrac label id from label id list, save in var
@@ -134,12 +166,13 @@ def batch_modify_message_label(attach_ids_list, label='Processing'):
     # wrapping in try clause in case label provided not available, then
     # catch IndexError and print message
     try:
-        service.users()                                                        \
-               .messages()                                                     \
-               .batchModify(userId='me',body=batch_modify_body)                \
-               .execute()
+        build_obj.users()                                                      \
+                 .messages()                                                   \
+                 .batchModify(userId='me',body=batch_modify_body)              \
+                 .execute()
     except IndexError:
         print('{} label not found in user\'s inbox'.format(label))
+    return None
 
 def download_files_from_drive(service, fname, file_id='', out_dir=''):
     # check if file_id was passed to func; if not, retrieve file by filename
@@ -165,7 +198,7 @@ def download_files_from_drive(service, fname, file_id='', out_dir=''):
     # grab the content of the file_id provided, return as plain text
     # NOTE: other mime type can be provided
     content = service.files()                                                  \
-                     .export(fileId=file_id, mimeType='text/csv')            \
+                     .export(fileId=file_id, mimeType='text/csv')              \
                      .execute()
     # save file in local directory using filename passed
     # TODO add path to fname for output dir, include this as a param of func
@@ -176,6 +209,34 @@ def download_files_from_drive(service, fname, file_id='', out_dir=''):
         f.write(content)
         f.close()
     return '{} downloaded from drive'.format(save_fname)
+
+def grab_from_addr(mess_ids, build_obj, lst=False):
+    from_addr_dict = {}
+    if lst:
+        for mess_id in mess_ids:
+            mess = build_obj.users()                                           \
+                            .messages()                                        \
+                            .get(userId='me', id=mess_id)                      \
+                            .execute()
+            for sect in mess['payload']['headers']:
+                if sect['name'] == 'From':
+                    from_addr_dict[mess_id] = sect['value']
+                    break
+                else:
+                    from_addr_dict[mess_id] = 'NULL'
+        return from_addr_dict
+    else:
+        mess = build_obj.users()                                               \
+                        .messages()                                            \
+                        .get(userId='me', id=mess_ids)                         \
+                        .execute()
+        for sect in mess['payload']['headers']:
+            if sect['name'] == 'From':
+                return sect['value']
+            else:
+                continue
+
+
 
 # function to validate credntial or tokens file and return build object
 # note that gmail and v1 are hard coded in the build() method, should other
