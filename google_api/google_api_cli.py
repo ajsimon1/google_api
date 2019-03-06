@@ -5,7 +5,7 @@ the argparse
 import argparse
 import os
 
-import google_api_core as gac
+from . import google_api_core as gac
 
 parser = argparse.ArgumentParser(description='CLI wrapper for google services' \
                                              ' api')
@@ -16,14 +16,14 @@ parser.add_argument('-q', '--query', type=str, help='Pass query to service')
 parser.add_argument('-n', '--name', type=str, help='Pass name of resource to ' \
                                                 'service')
 parser.add_argument('-o', '--out', help='Path of desired output directory')
-parser.add_argument('-c', '--credentials', help='specify credentials file to ')\
+parser.add_argument('-c', '--credentials', help='specify credentials file to ' \
                                             'use')
 parser.add_argument('-d',
                     '--querydate',
                     type=int,
                     help='days from current date to include in query. e.g. '   \
                     'if looking for all mail from yesterday, pass 1; if 2 days'\
-                    'back pass 2, etc.'
+                    'back pass 2, etc.')
 
 # TODO figure out best options/arguments
 # having a positional arg for which google service is being called might be
@@ -76,13 +76,13 @@ def run(args):
             query_date = args.querydate
         else:
             query_date = 1
-        start_date = dt.datetime.now() - dt.timedelta(days=query_date)
+        start_date = dt.datetime.now() - dt.timedelta(days=args.query_date)
         search_query = args.query + ' after {}'.format(start_date.strftime('%Y/%m/%d'))
         results = gac.pull_mail_from_query(service, search_query)
         # details_tup contains, attach id, mess id, from addr, filename in that
         # order
-        details_tup = pull_attachs_from_query_results(build_obj=service,
-                                                     results=results)
+        file_details_tup = pull_attachs_from_query_results(build_obj=service,
+                                                           results=results)
         # attach_dict contains filename as key and base64 encoded data as value
         attach_dict = download_attachs(build_obj=service,
                                        attach_ids_list=attach_ids_list,

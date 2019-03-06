@@ -4,6 +4,7 @@ with the cli module for proper functionality
 '''
 import base64
 import datetime as dt
+import json
 import os
 import pickle
 import sys
@@ -52,7 +53,7 @@ def authenticate(scopes, basedir, credentials_f, service, serv_vers):
     return service
 
 def pull_mail_from_query(build_obj, search_query):
-    results = service.users().messages().list(userId='me',
+    results = build_obj.users().messages().list(userId='me',
                                               q=search_query).execute()
     # return object is dict, inside 'messages' key is a list of message
     # resources confirm messages were returned based on quesry filtering for
@@ -236,7 +237,29 @@ def grab_from_addr(mess_ids, build_obj, lst=False):
             else:
                 continue
 
+def build_json(file_details):
+    output_dict = {}
+    create_date = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
+    out_filename = '{0}_c2b_trade_date_email_output.json'.format(create_date)
+    output_dict['create_date'] = create_date
+    output_dict['files_downloaded'] = len(file_details)
+    file_count = 0
+    # details_tup contains, attach id, mess id, from addr, filename in that
+    for item in file_details:
+        output_dict[count] = {
+            'attachment_id': item[0],
+            'message_id': item[1],
+            'from_email_addr': item[2],
+            'filename': item[1] + '_' + item[3]
+        }
+        count += 1
 
+
+# TODO - start here, iterate through tuple to build out json file, adding
+# labels as needed
+
+    output = json.dumps(file_dict, out_filename)
+    return output
 
 # function to validate credntial or tokens file and return build object
 # note that gmail and v1 are hard coded in the build() method, should other
@@ -304,10 +327,9 @@ if __name__ == '__main__':
         search_query = 'has:attachment after:{}'.format(start_date.strftime('%Y/%m/%d'))
     service = authenticate(scopes=SCOPES,
                            basedir=basedir,
-                           tokens_f=tradedata_tokens_f,
                            credentials_f=tradedata_credentials_f,
-                           service='gmail', # TODO pass these as argvs
-                           serv_vers='v1') # TODO pass this as argvs
+                           service='gmail',
+                           serv_vers='v1')
     results = pull_mail_from_query(service, search_query)
     attach_ids_list = pull_attachs_from_query_results(results=results)
     download_attachs(attach_ids_list=attach_ids_list, attachdir = attachdir)

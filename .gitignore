@@ -7,3 +7,4 @@
 *.py[cod]
 __pycache__\
 *.pickle
+*.json
