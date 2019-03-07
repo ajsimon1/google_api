@@ -25,11 +25,6 @@ parser.add_argument('-d',
                     'if looking for all mail from yesterday, pass 1; if 2 days'\
                     'back pass 2, etc.')
 
-# TODO figure out best options/arguments
-# having a positional arg for which google service is being called might be
-# beneficial, python google_api drive or python google_api gmail
-# defaults should be credentials files
-# optional argument
 
 # grab base directory of script for relative file transfers
 # can use os.getcwd() if __file__ not available
@@ -46,7 +41,8 @@ drive_tokens_f = 'drive_tokens.json'
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly',
           'https://www.googleapis.com/auth/gmail.modify',
           'https://www.googleapis.com/auth/drive.metadata.readonly',
-          'https://www.googleapis.com/auth/drive.readonly']
+          'https://www.googleapis.com/auth/drive.readonly',
+          'https://www.googleapis.com/auth/spreadsheets.readonly']
 # validate attachments against 'accepted' list to only pull down certain files
 # TODO files with alternate extensions should not be discarded but dumped into
 # separate bucket
