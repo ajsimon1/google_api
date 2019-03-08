@@ -54,7 +54,8 @@ def authenticate(scopes, basedir, credentials_f, service, serv_vers):
 
 def pull_mail_from_query(build_obj, search_query):
     results = build_obj.users().messages().list(userId='me',
-                                              q=search_query).execute()
+                                                labelsIds=['Inbox'],
+                                                q=search_query).execute()
     # return object is dict, inside 'messages' key is a list of message
     # resources confirm messages were returned based on quesry filtering for
     # only messages with attachments
