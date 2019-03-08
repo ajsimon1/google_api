@@ -164,7 +164,7 @@ def batch_modify_message_label(build_obj, attach_ids_list, label='Processing'):
     # ping api, if successful there is no return response for this
     batch_modify_body = {'ids': mess_ids,
                          'addLabelIds': proc_label_id,
-                         'removeLabelIds': ['INBOX']}
+                         'removeLabelIds': ['Inbox']}
     # wrapping in try clause in case label provided not available, then
     # catch IndexError and print message
     try:
