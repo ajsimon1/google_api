@@ -24,6 +24,8 @@ parser.add_argument('-d',
                     help='days from current date to include in query. e.g. '   \
                     'if looking for all mail from yesterday, pass 1; if 2 days'\
                     'back pass 2, etc.')
+parser.add_argument('-s', '--sheet_id', help='sheet ID to query')
+parser.add_argument('-r','--ranges', help='ranges to query on sheet')
 
 
 # grab base directory of script for relative file transfers
@@ -31,10 +33,8 @@ parser.add_argument('-d',
 basedir = os.path.abspath(os.path.join(__file__,'../..'))
 # dump directory for attachments
 attachdir = basedir+'..//attachments//'
-personal_credentials_f = 'drive_credentials.json'
+personal_credentials_f = 'drive_sheets_credentials.json'
 tradedata_credentials_f = 'client_secret_c2b_gmail.json'
-drive_tokens_f = 'drive_tokens.json'
-
 
 # scope necessary is for gmail readonly, a list of scopes can be found at
 # https://developers.google.com/gmail/api/auth/scopes
@@ -43,6 +43,7 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.readonly',
           'https://www.googleapis.com/auth/drive.metadata.readonly',
           'https://www.googleapis.com/auth/drive.readonly',
           'https://www.googleapis.com/auth/spreadsheets.readonly']
+
 # validate attachments against 'accepted' list to only pull down certain files
 # TODO files with alternate extensions should not be discarded but dumped into
 # separate bucket
@@ -51,7 +52,8 @@ EXTENSIONS = ['txt', 'csv', 'xlsx', 'xls', '', 'dat', 'zip', 'rpg']
 # set dict to manage current versions of each service
 up_to_date_service_versions = {
     'drive': 'v3',
-    'gmail': 'v1'
+    'gmail': 'v1',
+    'sheets': 'v4',
 }
 
 def run(args):
@@ -72,22 +74,31 @@ def run(args):
             query_date = args.querydate
         else:
             query_date = 1
+        if args.sheet_id:
+            sheets_service = gac.authenticate(scopes=SCOPES,
+                                              basedir='',
+                                              credentials=personal_credentials_f,
+                                              service='sheets',
+                                              serv_vers='v4')
+            look_up_details = gac.query_sheets(sheet_service,
+                                               sheet_id = args.sheets,
+                                               ranges = args.ranges)
         start_date = dt.datetime.now() - dt.timedelta(days=args.query_date)
-        search_query = args.query + ' after {}'.format(start_date.strftime('%Y/%m/%d'))
+        search_query = args.query + ' after:{}'.format(start_date.strftime('%Y/%m/%d'))
         results = gac.pull_mail_from_query(service, search_query)
         # details_tup contains, attach id, mess id, from addr, filename in that
         # order
-        file_details_tup = pull_attachs_from_query_results(build_obj=service,
-                                                           results=results)
+        file_details_tup = gac.pull_attachs_from_query_results(build_obj=service,
+                                                               results=results)
         # attach_dict contains filename as key and base64 encoded data as value
-        attach_dict = download_attachs(build_obj=service,
+        attach_dict = gac.download_attachs(build_obj=service,
+                                           attach_ids_list=attach_ids_list,
+                                           attachdir = attachdir)
+        gac.batch_modify_message_label(build_obj=service,
                                        attach_ids_list=attach_ids_list,
-                                       attachdir = attachdir)
-        batch_modify_message_label(build_obj=service,
-                                   attach_ids_list=attach_ids_list,
-                                   label='Processed')
-
-        # TODO add filename to attach_ids tuple
+                                       label='Automation_Processed')
+        sheets_data = gac.query_sheets(sheet_service,args.sheet_id,args.ranges)
+        gac.build_json(file_details_tup, sheets_data, args.out)
 
 
     return None

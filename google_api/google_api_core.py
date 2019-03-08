@@ -25,7 +25,7 @@ def authenticate(scopes, basedir, credentials_f, service, serv_vers):
     # if yes, this file is used to authenticate service
     if service == 'gmail':
         pickle_f = 'td_gmail_token.pickle'
-    elif service == 'drive':
+    elif service == 'drive' or service == 'sheets':
         pickle_f = 'pers_drive_token.pickle'
 
     full_token_path = os.path.join(basedir,pickle_f)
@@ -237,100 +237,44 @@ def grab_from_addr(mess_ids, build_obj, lst=False):
             else:
                 continue
 
-def build_json(file_details):
+def query_sheets(build_obj, sheet_id, ranges):
+    # sample ranges = [Sheet1!A1:B35]
+    query_results = build_obj.spreadsheets()                                   \
+                             .get(spreadsheetId=sheet_id,
+                                  ranges=ranges,
+                                  includeGridData=True)                        \
+                             .execute()
+    response_lst = [[j['formattedValue'] for j in i['values']]
+                    for i
+                    in query_results['sheets'][0]['data'][0]['rowData']]
+
+    return response_lst
+
+def build_json(file_details, look_up_file, output_dir):
     output_dict = {}
     create_date = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
     out_filename = '{0}_c2b_trade_date_email_output.json'.format(create_date)
     output_dict['create_date'] = create_date
     output_dict['files_downloaded'] = len(file_details)
+    output_dict['file_details'] = {}
     file_count = 0
     # details_tup contains, attach id, mess id, from addr, filename in that
     for item in file_details:
-        output_dict[count] = {
+        output_dict['file_details'][file_count] = {
             'attachment_id': item[0],
             'message_id': item[1],
-            'from_email_addr': item[2],
+            'from_email_dom': item[2].split('@')[-1].split('.')[0],
             'filename': item[1] + '_' + item[3]
         }
-        count += 1
-
-
-# TODO - start here, iterate through tuple to build out json file, adding
-# labels as needed
-
-    output = json.dumps(file_dict, out_filename)
-    return output
-
-# function to validate credntial or tokens file and return build object
-# note that gmail and v1 are hard coded in the build() method, should other
-# google apis be needed, these values will need to parameterized
-# added 'service' arg to genericize function and allow for multiple
-# apis to use the same auth func
-def authenticate_deprecated(scopes, basedir, tokens_f, credentials_f, service, serv_vers):
-    # start by creating a Storage() object to manage authorization
-    # this is pulled from oauth2client lib file module.  the tokens.json
-    # filename is passed as this is used for reoccuring authorized access to
-    # the api.  if the tokens.json file is not available, the .get() method
-    # will return none and the if statement will trigger the flow logic
-    # to run.  This will in turn create a tokens.json file based on
-    # downloaded credentials.json file
-    store = file.Storage(os.path.join(basedir,tokens_f))
-    # get() method on Storage object retrieves credentials from tokens.json
-    # file, if that file does not exist var calling get() method will be empty
-    creds = store.get()
-    # logic statement checks to see if creds var was able to pull data from
-    # tokens.json file.  If not, or if creds pulled are invalid, the
-    # flow statement runs which creates a tokens.json file
-    if not creds or creds.invalid:
-        # since no tokens.json file is available or the data pulled from the
-        # file is not valid, a flow object is created from client modules,
-        # passing in credentials.json file and scopes.  credntials.json file
-        # is downloaded from google API console and should be saved within
-        # same namespace as script.  Also should be shared globally
-        flow = client.flow_from_clientsecrets(os.path.join(basedir,
-                                                          credentials_f),
-                                                           scopes)
-        # run_flow() method from tools module generates tokens.json file within
-        # namespace and saved approriate data to creds var
-        # note: when run for the first time, run_flow() will open a browser
-        # tab to have user authorize application.  this is only done for initial
-        # attempt to access gmail api, or is tokens.json data becomes invalid
-        # the credentials.json file can be modified to update where the user
-        # redirected if this authorization fails
-        creds = tools.run_flow(flow, store)
-    # build() func creates the interface between the client and api, utilizing
-    # multiple class methods to pull specific resources from the provided api
-    # list of supported apis at:
-    # https://developers.google.com/api-client-library/python/apis/
-    service = build(str(service), str(serv_vers), http=creds.authorize(Http()))
-    # once service ojb created, chain methods together to pull down desired
-    # resource.  various resources/collections available at:
-    # https://developers.google.com/gmail/api/v1/reference/
-    # note that different collections will have different required parameters
-    # to pass.  of note is the 'q' parameter on messages().get(q='') which
-    # allows to filter message list with same syntax used to search in gmail app
-    # note the use of 'me' arg as userId, this is syntatic sugar to reference
-    # current user, otherwise full email addr can be used
-    # execute() method must be called
-    return service
-
-if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        # search query can be added as an argument when calling the file
-        search_query = sys.argv[1]
-    else:
-        # grab yesterday's date to use in gmail search query
-        start_date = dt.datetime.now() - dt.timedelta(days=1)
-        # search query to pull only emails with attachments received after
-        # yesterday, additional query operators are located here:
-        # https://support.google.com/mail/answer/7190?hl=en
-        search_query = 'has:attachment after:{}'.format(start_date.strftime('%Y/%m/%d'))
-    service = authenticate(scopes=SCOPES,
-                           basedir=basedir,
-                           credentials_f=tradedata_credentials_f,
-                           service='gmail',
-                           serv_vers='v1')
-    results = pull_mail_from_query(service, search_query)
-    attach_ids_list = pull_attachs_from_query_results(results=results)
-    download_attachs(attach_ids_list=attach_ids_list, attachdir = attachdir)
-    batch_modify_message_label(attach_ids_list, label='TESTING_GMAIL_API')
+        file_count += 1
+    for file_detail in output_dict['file_details'].values():
+        for look_up_file_item in look_up_file:
+            if file_detail['from_email_dom'] in look_up_file_item:
+                file_detail['folder_name'] = look_up_file_item[1]
+                file_detail['provider_id'] = look_up_file_item[2]
+                file_detail['email_from_domain'] = look_up_file_item[0]
+    output = json.dumps(file_dict)
+    with open(output_dir+out_filename, 'w') as f:
+        f.write(output)
+        f.close()
+    return None
