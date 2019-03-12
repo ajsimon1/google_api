@@ -11,7 +11,6 @@ parser = argparse.ArgumentParser(description='CLI wrapper for google services' \
                                              ' api')
 parser.add_argument('service', help='specify the google service to connect to,'\
                                     ' [drive, gmail]')
-#parser.add_argument('authenticate', help='Function authenticates user with google account.  This may require authorization')
 parser.add_argument('-q', '--query', type=str, help='Pass query to service')
 parser.add_argument('-n', '--name', type=str, help='Pass name of resource to ' \
                                                 'service')
@@ -32,7 +31,7 @@ parser.add_argument('-r','--ranges', help='ranges to query on sheet')
 # can use os.getcwd() if __file__ not available
 basedir = os.path.abspath(os.path.join(__file__,'../..'))
 # dump directory for attachments
-attachdir = basedir+'..//attachments//'
+attachdir = basedir+'.//GMC_OUTPUT//attachments//'
 personal_credentials_f = 'drive_sheets_credentials.json'
 tradedata_credentials_f = 'client_secret_c2b_gmail.json'
 
@@ -47,7 +46,7 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.readonly',
 # validate attachments against 'accepted' list to only pull down certain files
 # TODO files with alternate extensions should not be discarded but dumped into
 # separate bucket
-EXTENSIONS = ['txt', 'csv', 'xlsx', 'xls', '', 'dat', 'zip', 'rpg']
+EXTENSIONS = ['txt', 'csv', 'xlsx', 'xls', '', 'dat', 'zip', 'rpg', 'acf']
 
 # set dict to manage current versions of each service
 up_to_date_service_versions = {
@@ -92,10 +91,10 @@ def run(args):
                                                                results=results)
         # attach_dict contains filename as key and base64 encoded data as value
         attach_dict = gac.download_attachs(build_obj=service,
-                                           attach_ids_list=attach_ids_list,
+                                           attach_ids_list=file_details_tup,
                                            attachdir = attachdir)
         gac.batch_modify_message_label(build_obj=service,
-                                       attach_ids_list=attach_ids_list,
+                                       attach_ids_list=file_details_tup,
                                        label='Automation_Processed')
         sheets_data = gac.query_sheets(sheet_service,args.sheet_id,args.ranges)
         gac.build_json(file_details_tup, sheets_data, args.out)

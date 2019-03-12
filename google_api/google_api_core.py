@@ -13,7 +13,7 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
-EXTENSIONS = ['txt', 'csv', 'xlsx', 'xls', '', 'dat', 'zip', 'rpg']
+EXTENSIONS = ['txt', 'csv', 'xlsx', 'xls', '', 'dat', 'zip', 'rpg', 'acf']
 
 # function to authenticate app with previoulsy built token file or credentials
 # file downloaded for google api console
@@ -133,12 +133,12 @@ def download_attachs(build_obj, attach_ids_list, attachdir):
     # method to pull down the actual attachment, and add to dict, using the
     # filename as the key and the attachment data as the value
     for a_id in attach_ids_list:
-            attachments[a_id[3]] = build_obj.users()                           \
+            attachments[a_id[1]+a_id[3]] = build_obj.users()                   \
                                             .messages()                        \
                                             .attachments()                     \
                                             .get(userId='me',
-                                               id=a_id[0],
-                                               messageId=a_id[1]).execute()
+                                                 id=a_id[0],
+                                                 messageId=a_id[1]).execute()
     # iterate through the attachs dict, pulling fielname and file data with
     # items() call
     for k, v in attachments.items():
