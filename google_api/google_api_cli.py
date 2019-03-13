@@ -26,6 +26,8 @@ parser.add_argument('-d',
                     'back pass 2, etc.')
 parser.add_argument('-s', '--sheet_id', help='sheet ID to query')
 parser.add_argument('-r','--ranges', help='ranges to query on sheet')
+parser.add_argument('-a', '--attach_dir', help='specify dir for attachments '  \
+                          'to download to, otherwise, uses parent dir of file')
 
 
 # grab base directory of script for relative file transfers
@@ -94,6 +96,8 @@ def run(args):
         file_details_tup, not_accepted = gac.pull_attachs_from_query_results(build_obj=service,
                                                                              results=results)
         # attach_dict contains filename as key and base64 encoded data as value
+        if args.attach_dir:
+            attachdir = args.attach_dir
         attach_dict = gac.download_attachs(build_obj=service,
                                            attach_ids_list=file_details_tup,
                                            attachdir = attachdir)
