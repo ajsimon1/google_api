@@ -54,15 +54,18 @@ def authenticate(scopes, basedir, credentials_f, service, serv_vers):
 
 def pull_mail_from_query(build_obj, search_query):
     results = build_obj.users().messages().list(userId='me',
-                                                labelsIds=['Inbox'],
+                                                labelIds=['INBOX'],
                                                 q=search_query).execute()
     # return object is dict, inside 'messages' key is a list of message
     # resources confirm messages were returned based on quesry filtering for
     # only messages with attachments
-    if not results['messages']:
-        print('No messages that match query: {}'.format(search_query))
-    else:
-        return results
+    try:
+        if not results['messages']:
+            return 'No messages that match query: {}'.format(search_query)
+        else:
+            return results
+    except KeyError:
+        return 'No messages in Inbox'
 
 
 def pull_attachs_from_query_results(build_obj, results):
@@ -71,6 +74,7 @@ def pull_attachs_from_query_results(build_obj, results):
     # (attachmentId, messageId, filename). the script will iterate through this
     # list and call attachment.get() api on each attachmentId
     attach_ids = []
+    not_accept_ext_lst = []
     # iterate through nested message list, wrapping in try block in case
     # message resource missing 'payload' or 'parts' key
     # TODO make try bloack/error messsaging more robust
@@ -100,8 +104,10 @@ def pull_attachs_from_query_results(build_obj, results):
                                             from_addr,
                                             part['filename'],))
                     else:
-                        print('File extension for message id {}, not accetpable '\
-                            'extension'.format(m_id))
+                        not_accept_ext_lst.append((part['body']['attachmentId'],
+                                                   m_id,
+                                                   from_addr,
+                                                   part['filename']))
                         continue
                 else:
                     continue
@@ -114,8 +120,10 @@ def pull_attachs_from_query_results(build_obj, results):
                                             from_addr,
                                             mess['payload']['filename'],))
                     else:
-                        print('File extension for message id {}, not accetpable '\
-                            'extension'.format(m_id))
+                        not_accept_ext_lst.append((part['body']['attachmentId'],
+                                                   m_id,
+                                                   from_addr,
+                                                   part['filename']))
                         continue
                 else:
                     continue
@@ -124,7 +132,7 @@ def pull_attachs_from_query_results(build_obj, results):
 
     # keyError exception accounts for any of the above keys being missing
     # while still allowing other errors to raise exception
-    return attach_ids
+    return attach_ids, not_accept_ext_lst
 
 def download_attachs(build_obj, attach_ids_list, attachdir):
     # dict that will hold the actual attachments with attachmentId as the key
@@ -133,12 +141,13 @@ def download_attachs(build_obj, attach_ids_list, attachdir):
     # method to pull down the actual attachment, and add to dict, using the
     # filename as the key and the attachment data as the value
     for a_id in attach_ids_list:
-            attachments[a_id[1]+a_id[3]] = build_obj.users()                   \
-                                            .messages()                        \
-                                            .attachments()                     \
-                                            .get(userId='me',
-                                                 id=a_id[0],
-                                                 messageId=a_id[1]).execute()
+            attachments[a_id[1] + '_' + a_id[3]] = build_obj.users()           \
+                                                            .messages()        \
+                                                            .attachments()     \
+                                                        .get(userId='me',
+                                                             id=a_id[0],
+                                                             messageId=a_id[1])\
+                                                            .execute()
     # iterate through the attachs dict, pulling fielname and file data with
     # items() call
     for k, v in attachments.items():
@@ -152,7 +161,7 @@ def download_attachs(build_obj, attach_ids_list, attachdir):
             f.close()
     return attachments
 
-def batch_modify_message_label(build_obj, attach_ids_list, label='Processing'):
+def batch_modify_message_label(build_obj, attach_ids_list, not_found_lst, label='Processing'):
     # pull down all available labels
     response = build_obj.users().labels().list(userId='me').execute()
     # extract only labels list from entire response object
@@ -161,10 +170,13 @@ def batch_modify_message_label(build_obj, attach_ids_list, label='Processing'):
     proc_label_id = [val['id'] for val in labels if val['name']==label]
     # extract just the message ids to iclude as list in batchModify() method
     mess_ids = [a_id[1] for a_id in attach_ids_list]
+    if not_found_lst:
+        for missing in not_found_lst:
+            mess_ids.remove(missing)
     # ping api, if successful there is no return response for this
     batch_modify_body = {'ids': mess_ids,
                          'addLabelIds': proc_label_id,
-                         'removeLabelIds': ['Inbox']}
+                         'removeLabelIds': ['INBOX','UNREAD']}
     # wrapping in try clause in case label provided not available, then
     # catch IndexError and print message
     try:
@@ -251,31 +263,46 @@ def query_sheets(build_obj, sheet_id, ranges):
 
     return response_lst
 
-def build_json(file_details, look_up_file, output_dir):
+def build_json(output_dir, not_accepted_tup, file_details, look_up_file, error_mess=''):
     output_dict = {}
     create_date = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
     out_filename = '{0}_c2b_trade_date_email_output.json'.format(create_date)
     output_dict['create_date'] = create_date
-    output_dict['files_downloaded'] = len(file_details)
-    output_dict['file_details'] = {}
-    file_count = 0
-    # details_tup contains, attach id, mess id, from addr, filename in that
-    for item in file_details:
-        output_dict['file_details'][file_count] = {
-            'attachment_id': item[0],
-            'message_id': item[1],
-            'from_email_dom': item[2].split('@')[-1].split('.')[0],
-            'filename': item[1] + '_' + item[3]
-        }
-        file_count += 1
-    for file_detail in output_dict['file_details'].values():
-        for look_up_file_item in look_up_file:
-            if file_detail['from_email_dom'] in look_up_file_item:
-                file_detail['folder_name'] = look_up_file_item[1]
-                file_detail['provider_id'] = look_up_file_item[2]
-                file_detail['email_from_domain'] = look_up_file_item[0]
-    output = json.dumps(file_dict)
+    folder_not_found_lst = []
+    if error_mess:
+        output_dict['Error Message:'] = error_mess
+    else:
+        if not_accepted_tup:
+            output_dict['unverified_ext'] = not_accepted_tup
+        output_dict['files_downloaded'] = len(file_details)
+        output_dict['file_details'] = {}
+        file_count = 0
+        # details_tup contains, attach id, mess id, from addr, filename in that
+        for item in file_details:
+            output_dict['file_details'][file_count] = {
+                'attachment_id': item[0],
+                'message_id': item[1],
+                'from_email_dom': item[2].split('@')[-1].split('.')[0],
+                'filename': item[1] + '_' + item[3]
+            }
+            file_count += 1
+        for file_detail in output_dict['file_details'].values():
+            found_match = False
+            for look_up_file_item in look_up_file:
+                if file_detail['from_email_dom'] in look_up_file_item:
+                    file_detail['folder_name'] = look_up_file_item[1]
+                    file_detail['provider_id'] = look_up_file_item[2]
+                    file_detail['email_from_domain'] = look_up_file_item[0]
+                    found_match = True
+                    break
+                else:
+                    continue
+            if not found_match:
+                folder_not_found_lst.append(file_detail['message_id'])
+                file_detail['notes'] = 'no folder name found for domain name {}'\
+                                       ' '.format(file_detail['from_email_dom'])
+    output = json.dumps(output_dict)
     with open(output_dir+out_filename, 'w') as f:
         f.write(output)
         f.close()
-    return None
+    return folder_not_found_lst
