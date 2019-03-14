@@ -134,23 +134,41 @@ def pull_attachs_from_query_results(build_obj, results):
     # while still allowing other errors to raise exception
     return attach_ids, not_accept_ext_lst
 
-def download_attachs(build_obj, attach_ids_list, attachdir):
-    # dict that will hold the actual attachments with attachmentId as the key
-    attachments = {}
+def prepend_fldr_name(attach_dict, look_up_file):
+    # attach dict is from_addr.mess_id_filename as key with attachId as values
+    # look_up_file is nested list of from_addr, folder_name, provider_id
+    # goal is to prepend folder name to file name using from addr as key
+    adjusted_dict = {}
+    for k, v in attach_dict.items():
+        prefix = k.split('_', maxsplit=1)[0]
+        fname = k.split('_', maxsplit=1)[1]
+        for item in look_up_file:
+            if prefix.split('.')[0] in item:
+                adjusted_dict[item[1] + '_' + fname] = v
+            else:
+                continue
+    return adjusted_dict
+
+def download_attachs(build_obj, attach_ids_list, attachdir, look_up_file):
+    # dict that will hold the actual attachments with filename combined with
+    # from addr domain name and message id as the key
+    pre_attach_dict = {}
     # iterate the info tuples, extract the attachmentId, call attchments.get()
     # method to pull down the actual attachment, and add to dict, using the
     # filename as the key and the attachment data as the value
     for a_id in attach_ids_list:
-            attachments[a_id[1] + '_' + a_id[3]] = build_obj.users()           \
-                                                            .messages()        \
-                                                            .attachments()     \
-                                                        .get(userId='me',
-                                                             id=a_id[0],
-                                                             messageId=a_id[1])\
-                                                            .execute()
+            from_domain = a_id[2].split('@')[-1].split('.')[0]
+            pre_attach_dict[from_domain+'.'+a_id[1]+'_'+ a_id[3]]=build_obj.users()                \
+                                                                           .messages()             \
+                                                                           .attachments()          \
+                                                                           .get(userId='me',
+                                                                                id=a_id[0],
+                                                                                messageId=a_id[1]) \
+                                                                           .execute()
+    post_attach_dict = prepend_fldr_name(pre_attach_dict,look_up_file)
     # iterate through the attachs dict, pulling fielname and file data with
     # items() call
-    for k, v in attachments.items():
+    for k, v in post_attach_dict.items():
         # decode the byte code and variabilize as file_data, UTF-8 encoded
         file_data = base64.urlsafe_b64decode(v['data'].encode('UTF-8'))
         # open file with filepath as original filename and attachs dir, making
@@ -159,7 +177,7 @@ def download_attachs(build_obj, attach_ids_list, attachdir):
             # write file_data and save
             f.write(file_data)
             f.close()
-    return attachments
+    return post_attach_dict
 
 def batch_modify_message_label(build_obj, attach_ids_list, not_found_lst, label='Processing'):
     # pull down all available labels

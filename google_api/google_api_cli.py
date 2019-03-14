@@ -95,15 +95,16 @@ def run(args):
         # order
         file_details_tup, not_accepted = gac.pull_attachs_from_query_results(build_obj=service,
                                                                              results=results)
+        sheets_data = gac.query_sheets(build_obj=sheets_service,
+                                       sheet_id=args.sheet_id,
+                                       ranges=args.ranges)
         # attach_dict contains filename as key and base64 encoded data as value
         if args.attach_dir:
             attachdir = args.attach_dir
         attach_dict = gac.download_attachs(build_obj=service,
                                            attach_ids_list=file_details_tup,
-                                           attachdir = attachdir)
-        sheets_data = gac.query_sheets(build_obj=sheets_service,
-                                       sheet_id=args.sheet_id,
-                                       ranges=args.ranges)
+                                           attachdir=attachdir,
+                                           look_up_file=sheets_data)
         not_found_mess_ids = gac.build_json(output_dir=args.out,
                                             not_accepted_tup=not_accepted,
                                             file_details=file_details_tup,
