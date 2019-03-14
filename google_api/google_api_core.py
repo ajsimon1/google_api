@@ -144,7 +144,7 @@ def prepend_fldr_name(attach_dict, look_up_file):
         fname = k.split('_', maxsplit=1)[1]
         for item in look_up_file:
             if prefix.split('.')[0] in item:
-                adjusted_dict[item[1] + '_' + fname] = v
+                adjusted_dict[item[1] + '^' + fname] = v
             else:
                 continue
     return adjusted_dict
