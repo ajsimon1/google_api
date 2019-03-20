@@ -1,4 +1,8 @@
 '''
+Author: Adam Simon
+Created: 02/01/19
+Updated: 03/19/19
+Github: https://github.com/ajsimon1/google_api.git
 The core module houses the main functions for the api and interacts
 with the cli module for proper functionality
 '''
