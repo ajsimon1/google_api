@@ -62,6 +62,9 @@ parser.add_argument('-r','--ranges', help='ranges to query on sheet')
 # directory to drop attachments pulled from gmail api
 parser.add_argument('-a', '--attach_dir', help='specify dir for attachments '  \
                           'to download to, otherwise, uses parent dir of file')
+# boolean to make directories if output doesn't exist or to raise exception
+parser.add_argument('-m', '--mkdir', type=bool, help='create output dir and '  \
+                    'parents if it doesn\'t already exist or raise exception')
 
 ################################################################################
 # ############################ SET VARIABLES ################################# #
@@ -174,7 +177,8 @@ def run(args):
         attach_dict = gac.download_attachs(build_obj=service,
                                            attach_ids_list=file_details_tup,
                                            attachdir=attachdir,
-                                           look_up_file=sheets_data)
+                                           look_up_file=sheets_data,
+                                           mkdir=args.mkdir)
         # not found messages is passed to batch_modify function to ensure
         # that any messages that did not have corresponding folder name are not
         # marked as read and pushed out of inbox

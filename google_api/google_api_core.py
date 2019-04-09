@@ -8,6 +8,7 @@ with the cli module for proper functionality
 '''
 import base64
 import datetime as dt
+import errno
 import json
 import os
 import pickle
@@ -148,12 +149,12 @@ def prepend_fldr_name(attach_dict, look_up_file):
         fname = k.split('_', maxsplit=1)[1]
         for item in look_up_file:
             if prefix.split('.')[0] in item:
-                adjusted_dict[item[1] + '^' + fname] = v
+                adjusted_dict[item[1] + '/' + fname] = v
             else:
                 continue
     return adjusted_dict
 
-def download_attachs(build_obj, attach_ids_list, attachdir, look_up_file):
+def download_attachs(build_obj, attach_ids_list, attachdir, look_up_file, mkdir=False):
     # dict that will hold the actual attachments with filename combined with
     # from addr domain name and message id as the key
     pre_attach_dict = {}
@@ -175,6 +176,19 @@ def download_attachs(build_obj, attach_ids_list, attachdir, look_up_file):
     for k, v in post_attach_dict.items():
         # decode the byte code and variabilize as file_data, UTF-8 encoded
         file_data = base64.urlsafe_b64decode(v['data'].encode('UTF-8'))
+        # create file path, checks to see if path exists, if mkdir param is true
+        # and path doesn't exist, path and parents are created, otherwise
+        # exception is raised
+        out_folder_path = os.path.join(attachdir,k.split('/'))
+        if not os.path.exists(os.path.dirname(out_folder_path)):
+            if mkdir:
+                try:
+                    os.makedirs(os.path.dirname(out_folder_path))
+                except OSError as exc:
+                    if exc.errno != errno.EEXIST:
+                        raise
+            else:
+                raise FileNotFoundError('No folder found at {}'.format(out_folder_path))
         # open file with filepath as original filename and attachs dir, making
         # sure to open with 'wb' argument to ensure bytes are translated
         with open(attachdir+k, 'wb') as f:
