@@ -63,7 +63,7 @@ parser.add_argument('-r','--ranges', help='ranges to query on sheet')
 parser.add_argument('-a', '--attach_dir', help='specify dir for attachments '  \
                           'to download to, otherwise, uses parent dir of file')
 # boolean to make directories if output doesn't exist or to raise exception
-parser.add_argument('-m', '--mkdir', type=bool, help='create output dir and '  \
+parser.add_argument('-m', '--mkdir', help='create output dir and '  \
                     'parents if it doesn\'t already exist or raise exception')
 
 ################################################################################

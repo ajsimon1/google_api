@@ -179,9 +179,9 @@ def download_attachs(build_obj, attach_ids_list, attachdir, look_up_file, mkdir=
         # create file path, checks to see if path exists, if mkdir param is true
         # and path doesn't exist, path and parents are created, otherwise
         # exception is raised
-        out_folder_path = os.path.join(attachdir,k.split('/')[0])
+        out_folder_path = os.path.join(attachdir,k)
         if not os.path.exists(os.path.dirname(out_folder_path)):
-            if mkdir:
+            if bool(mkdir):
                 try:
                     os.makedirs(os.path.dirname(out_folder_path))
                 except OSError as exc:
@@ -191,7 +191,7 @@ def download_attachs(build_obj, attach_ids_list, attachdir, look_up_file, mkdir=
                 raise FileNotFoundError('No folder found at {}'.format(out_folder_path))
         # open file with filepath as original filename and attachs dir, making
         # sure to open with 'wb' argument to ensure bytes are translated
-        with open(attachdir+k, 'wb+') as f:
+        with open(out_folder_path, 'wb+') as f:
             # write file_data and save
             f.write(file_data)
             f.close()
