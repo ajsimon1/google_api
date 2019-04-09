@@ -179,7 +179,7 @@ def download_attachs(build_obj, attach_ids_list, attachdir, look_up_file, mkdir=
         # create file path, checks to see if path exists, if mkdir param is true
         # and path doesn't exist, path and parents are created, otherwise
         # exception is raised
-        out_folder_path = os.path.join(attachdir,k.split('/'))
+        out_folder_path = os.path.join(attachdir,k.split('/')[0])
         if not os.path.exists(os.path.dirname(out_folder_path)):
             if mkdir:
                 try:
