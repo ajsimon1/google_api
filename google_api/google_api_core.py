@@ -191,7 +191,7 @@ def download_attachs(build_obj, attach_ids_list, attachdir, look_up_file, mkdir=
                 raise FileNotFoundError('No folder found at {}'.format(out_folder_path))
         # open file with filepath as original filename and attachs dir, making
         # sure to open with 'wb' argument to ensure bytes are translated
-        with open(out_folder_path, 'wb+') as f:
+        with open(attachdir+k, 'wb+') as f:
             # write file_data and save
             f.write(file_data)
             f.close()
