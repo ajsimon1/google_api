@@ -299,7 +299,7 @@ def query_sheets(build_obj, sheet_id, ranges):
 
     return response_lst
 
-def build_json(output_dir, not_accepted_tup, file_details, look_up_file, error_mess=''):
+def build_json(output_dir, not_accepted_tup='', file_details='', look_up_file='', error_mess=''):
     output_dict = {}
     create_date = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
     out_filename = '{0}_c2b_trade_date_email_output.json'.format(create_date)
