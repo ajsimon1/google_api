@@ -220,7 +220,7 @@ def batch_modify_message_label(build_obj, attach_ids_list, not_found_lst, label=
                  .messages()                                                   \
                  .batchModify(userId='me',body=batch_modify_body)              \
                  .execute()
-    except IndexError, HttpError:
+    except (IndexError, HttpError):
         print('{} label not found in user\'s inbox, or no message IDs provided for update'.format(label))
     return None
 
