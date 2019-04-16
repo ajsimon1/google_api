@@ -215,13 +215,16 @@ def batch_modify_message_label(build_obj, attach_ids_list, not_found_lst, label=
                          'removeLabelIds': ['INBOX','UNREAD']}
     # wrapping in try clause in case label provided not available, then
     # catch IndexError and print message
+    if not batch_modify_body['ids']:
+        print('No message IDs to update')
+        return None
     try:
         build_obj.users()                                                      \
                  .messages()                                                   \
                  .batchModify(userId='me',body=batch_modify_body)              \
                  .execute()
     except (IndexError, HttpError):
-        print('{} label not found in user\'s inbox, or no message IDs provided for update'.format(label))
+        print('{} label not found in user\'s inbox'.format(label))
     return None
 
 def download_files_from_drive(service, fname, file_id='', out_dir=''):
