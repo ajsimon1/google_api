@@ -181,7 +181,7 @@ def download_attachs(build_obj, attach_ids_list, attachdir, look_up_file, mkdir=
         # exception is raised
         out_folder_path = os.path.join(attachdir,k)
         if not os.path.exists(os.path.dirname(out_folder_path)):
-            if bool(mkdir):
+            if mkdir:
                 try:
                     os.makedirs(os.path.dirname(out_folder_path))
                 except OSError as exc:
