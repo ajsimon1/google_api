@@ -296,7 +296,7 @@ def query_sheets(build_obj, sheet_id, ranges):
                                   ranges=ranges,
                                   includeGridData=True)                        \
                              .execute()
-    response_lst = [[j['formattedValue'] for j in i['values']]
+    response_lst = [[j['formattedValue'] for j in i['values'] if 'formattedValue' in j]
                     for i
                     in query_results['sheets'][0]['data'][0]['rowData']]
 
