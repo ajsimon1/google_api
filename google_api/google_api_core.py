@@ -30,7 +30,7 @@ def authenticate(scopes, basedir, credentials_f, service, serv_vers):
     # if yes, this file is used to authenticate service
     if service == 'gmail':
         pickle_f = 'td_gmail_token.pickle'
-    elif service == 'drive' or service == 'sheets':
+    elif service == 'drive' or service == 'sheets' or service == 'calendar':
         pickle_f = 'pers_drive_token.pickle'
 
     full_token_path = os.path.join(basedir,pickle_f)
@@ -346,5 +346,17 @@ def build_json(output_dir, not_accepted_tup='', file_details='', look_up_file=''
         f.close()
     return folder_not_found_lst
 
-def get_cal_events(time):
+# ############################################################################ #
+# ########################### CALENDAR API FUNCS ############################# #
+# ############################################################################ #
+def get_cal_by_id(build_obj,id):
+    cal = build_obj.calendar().get(calendarId=id).execute()
+    return cal
+
+def get_cal_events_by_date_range(build_obj, cal_id, time_min, time_max):
+    events = build_obj.events().list(calendarId=cal_id, timeMax=time_max, timeMin=time_min).execute()
+    return events
+
+def get_cal_events_by_query(build_obj, query):
+    events = build_obj.events().list(calendarId=cal_id, q=query).execute()
     return events
