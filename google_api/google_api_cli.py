@@ -12,6 +12,8 @@ Notes: User should note this app uses OAuth 2.0 and requires user approval via
        local directort for future uses without the need for browser approval;
        it's suggested that user run script locally with credentials than save
        pickle in remote directory to run
+
+python google_api.py calendar -c personal
 '''
 import argparse
 import datetime as dt
@@ -91,7 +93,8 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.readonly',
           'https://www.googleapis.com/auth/gmail.modify',
           'https://www.googleapis.com/auth/drive.metadata.readonly',
           'https://www.googleapis.com/auth/drive.readonly',
-          'https://www.googleapis.com/auth/spreadsheets.readonly']
+          'https://www.googleapis.com/auth/spreadsheets.readonly',
+          'https://www.googleapis.com/auth/calendar.readonly']
 
 # list of acceptable file extensions, files with extensions not on the list
 # are passed and left in the inbox
@@ -102,6 +105,7 @@ up_to_date_service_versions = {
     'drive': 'v3',
     'gmail': 'v1',
     'sheets': 'v4',
+    'calendar': 'v3',
 }
 
 ################################################################################
@@ -192,6 +196,12 @@ def run(args):
                                        attach_ids_list=file_details_tup,
                                        not_found_lst=not_found_mess_ids,
                                        label='Automation_Processed',)
+    elif args.service == 'calendar':
+        if args.datetime:
+            dt_search = datetime.datetime(args.datetime)
+        else:
+            dt_search = datetime.datetime.now()
+
     return None
 
 if __name__ == '__main__':

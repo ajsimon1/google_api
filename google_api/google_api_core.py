@@ -345,3 +345,6 @@ def build_json(output_dir, not_accepted_tup='', file_details='', look_up_file=''
         f.write(output)
         f.close()
     return folder_not_found_lst
+
+def get_cal_events(time):
+    return events
